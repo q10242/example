@@ -1,0 +1,72 @@
+version: '3.5'
+services:
+  mariadb:
+    restart: always
+    image: mariadb
+    environment:
+      - MYSQL_ROOT_PASSWORD=example@laravel
+      - MYSQL_DATABASE=example
+      - MYSQL_USER=example
+      - MYSQL_PASSWORD=example@laravel
+    networks:
+      - example-laravel
+    ports:
+      - "3306:3306"
+
+  php:
+    build: .
+    # image: "laravel:${GIT_COMMIT}"
+    restart: always
+    links:
+      - mariadb:mariadb
+    environment:
+      - DB_HOST=mariadb
+      - DB_DATABASE=example
+      - DB_USERNAME=example
+      - DB_PASSWORD=example@laravel
+    networks:
+      # - proxy
+      - example-laravel
+    volumes:
+      - ./:/var/www/laravel/
+
+    working_dir: /var/www/laravel
+    depends_on:
+      - mariadb
+
+  nginx:
+    restart: always
+    image: nginx:alpine
+    depends_on:
+      - php
+    environment:
+        - VIRTUAL_HOST=larave-dev.example.org
+        - VIRTUAL_NETWORK=nginx-proxy
+        - VIRTUAL_PORT=80
+        - LETSENCRYPT_HOST=larave-dev.example.org
+        - LETSENCRYPT_EMAIL=kyjita@gmail.com
+    links:
+      - php:php
+    volumes:
+      - ./deploy/nginx/conf.d/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./:/var/www/laravel/
+    networks:
+      - example-laravel
+    ports:
+      - "80:80"
+
+  redis:
+    image: redis:latest
+    restart: always
+
+    networks:
+      - example-laravel
+      # - proxy
+
+networks:
+  example-laravel:
+   driver: bridge
+  # proxy:
+  #   external:
+  #     name: sslproxy
